@@ -23,11 +23,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "erl_nif.h"
 #include "ed25519.h"
 #include "brine_task.h"
 #include "brine_queue.h"
+#include "brine_serialize.h"
 
 static int workers = 0;
 static brine_queue_s *queue;
@@ -54,12 +56,16 @@ static ERL_NIF_TERM BRINE_ERROR_NO_MEMORY;
 NIF(brine_generate_keypair);
 NIF(brine_sign_message);
 NIF(brine_verify_signature);
+NIF(brine_to_binary);
+NIF(brine_to_keypair);
 
 static ErlNifFunc nif_funcs[] =
 {
   {"generate_keypair", 2, brine_generate_keypair},
   {"sign_message", 4, brine_sign_message},
-  {"verify_signature", 5, brine_verify_signature}
+  {"verify_signature", 5, brine_verify_signature},
+  {"to_binary", 3, brine_to_binary},
+  {"to_keypair", 3, brine_to_keypair}
 };
 
 static ERL_NIF_TERM make_error_tuple(ErlNifEnv *env, ERL_NIF_TERM reason) {
@@ -121,6 +127,49 @@ static void sign_message(brine_task_s *task) {
   enif_send(NULL, &task->owner, task->env, enif_make_tuple2(env, task->ref, result));
 }
 
+static void keypair_to_binary(brine_task_s *task) {
+  ErlNifEnv *env = task->env;
+  brine_keypair_s *keypair = task->options.signature.keys;
+  ErlNifBinary blob;
+  ERL_NIF_TERM result;
+
+  if (!enif_alloc_binary(BRINE_BLOB_SZ, &blob)) {
+    result = BRINE_ERROR_NO_MEMORY;
+  }
+  else {
+    brine_keypair_to_binary(keypair, blob.data, blob.size);
+    result = enif_make_tuple2(env, enif_make_copy(env, BRINE_ATOM_OK), enif_make_binary(env, &blob));
+    enif_release_binary(&blob);
+  }
+  enif_release_resource((void *) keypair);
+  enif_send(NULL, &task->owner, task->env, enif_make_tuple2(env, task->ref, result));
+}
+
+static void binary_to_keypair(brine_task_s *task) {
+  ErlNifEnv *env = task->env;
+  brine_keypair_s *keypair;
+  ErlNifBinary blob;
+  ERL_NIF_TERM result;
+
+  if (!enif_inspect_binary(env, task->options.signature.message, &blob) ||
+      ((keypair = (brine_keypair_s *) enif_alloc_resource(brine_keypair_resource, sizeof(brine_keypair_s))) == NULL)) {
+    if (keypair) {
+      enif_release_resource((void *) keypair);
+    }
+    result = BRINE_ERROR_NO_MEMORY;
+  }
+  else {
+    if (brine_binary_to_keypair(keypair, blob.data, blob.size)) {
+      result = enif_make_tuple2(env, BRINE_ATOM_OK, make_keypair_record(env, keypair));
+    }
+    else {
+      result = make_error_tuple(env, enif_make_atom(env, "corrupt_keypair_blob"));
+    }
+    enif_release_resource((void *) keypair);
+  }
+  enif_send(NULL, &task->owner, task->env, enif_make_tuple2(env, task->ref, result));
+}
+
 static void verify_signature(brine_task_s *task) {
   ErlNifEnv *env = task->env;
   ErlNifBinary pubkey, signature, message;
@@ -166,6 +215,12 @@ static void *worker_loop(void *ignored) {
       break;
     case BRINE_VERIFY:
       verify_signature(task);
+      break;
+    case BRINE_TO_BINARY:
+      keypair_to_binary(task);
+      break;
+    case BRINE_TO_KEYPAIR:
+      binary_to_keypair(task);
       break;
     default:
       break;
@@ -250,6 +305,47 @@ NIF(brine_verify_signature) {
   return BRINE_ERROR_NO_MEMORY;
 }
 
+NIF(brine_to_binary) {
+  ErlNifPid owner;
+  brine_keypair_s *keys;
+
+  if (!enif_get_local_pid(env, argv[0], &owner) || !enif_is_ref(env, argv[1]) ||
+      !enif_get_resource(env, argv[2], brine_keypair_resource, (void **) &keys)) {
+    return enif_make_badarg(env);
+  }
+  brine_task_s *task = brine_task_new(&owner, BRINE_TO_BINARY, argv[1]);
+  if (task) {
+    task->options.signature.keys = keys;
+    enif_keep_resource((void *) keys);
+    if (brine_queue_enqueue(queue, task) != BQ_SUCCESS) {
+      enif_release_resource((void *) keys);
+      brine_task_destroy(&task);
+      return make_error_tuple(env, enif_make_atom(env, "overload"));
+    }
+    return BRINE_ATOM_OK;
+  }
+  return BRINE_ERROR_NO_MEMORY;
+}
+
+NIF(brine_to_keypair) {
+  ErlNifPid owner;
+
+  if (!enif_get_local_pid(env, argv[0], &owner) || !enif_is_ref(env, argv[1]) ||
+      !enif_is_binary(env, argv[2])) {
+    return enif_make_badarg(env);
+  }
+  brine_task_s *task = brine_task_new(&owner, BRINE_TO_KEYPAIR, argv[1]);
+  if (task) {
+    task->options.signature.message = enif_make_copy(task->env, argv[2]);
+    if (brine_queue_enqueue(queue, task) != BQ_SUCCESS) {
+      brine_task_destroy(&task);
+      return make_error_tuple(env, enif_make_atom(env, "overload"));
+    }
+    return BRINE_ATOM_OK;
+  }
+  return BRINE_ERROR_NO_MEMORY;
+}
+
 /**
    Callback function to be run when the Erlang VM loads this NIF for
    the first time.
@@ -269,6 +365,7 @@ int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {
     BRINE_ATOM_TRUE = enif_make_atom(env, "true");
     BRINE_ATOM_FALSE = enif_make_atom(env, "false");
     BRINE_ERROR_NO_MEMORY = enif_make_tuple2(env, BRINE_ATOM_ERROR, enif_make_atom(env, "no_memory"));
+    brine_serializer_init();
     return 0;
   }
   return 1;

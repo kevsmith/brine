@@ -27,23 +27,15 @@
 #include <stdbool.h>
 
 #include "erl_nif.h"
-
-// Key & signature constants
-#define BRINE_SEED_SZ 32
-#define BRINE_PUBKEY_SZ 32
-#define BRINE_PRIVKEY_SZ 64
-#define BRINE_SIG_SZ 64
-
-typedef struct {
-  unsigned char private[BRINE_PRIVKEY_SZ];
-  unsigned char public[BRINE_PUBKEY_SZ];
-} brine_keypair_s;
+#include "brine_serialize.h"
 
 typedef enum brine_cmd_e {
   BRINE_STOP,
   BRINE_NEW_KEYPAIR,
   BRINE_SIGN_MSG,
-  BRINE_VERIFY
+  BRINE_VERIFY,
+  BRINE_TO_BINARY,
+  BRINE_TO_KEYPAIR
 } brine_task_cmd_e;
 
 typedef struct {

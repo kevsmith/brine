@@ -23,15 +23,20 @@
 -opaque handle()    :: <<>>.
 -type public_key()  :: <<_:256>>.
 -type private_key() :: <<_:512>>.
+-type keypair_blob() :: <<_:848>>.
+
 -export_type([handle/0,
               public_key/0,
-              private_key/0]).
+              private_key/0,
+              keypair_blob/0]).
 
 -include_lib("brine/include/brine.hrl").
 
 -export([new_keypair/0,
          sign_message/2,
-         verify_signature/3]).
+         verify_signature/3,
+         keypair_to_binary/1,
+         binary_to_keypair/1]).
 
 %% Needs to be a macro so the stacktrace for the badarg error
 %% is correct.
@@ -64,3 +69,15 @@ verify_signature(PubKey, Signature, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:verify_signature(Owner, Ref, PubKey, Signature, Message)).
+
+-spec keypair_to_binary(#brine_keypair{}) -> {ok, keypair_blob()} | {error, term()}.
+keypair_to_binary(#brine_keypair{handle=H}) ->
+    Owner = self(),
+    Ref = erlang:make_ref(),
+    ?complete_nif_call(Ref, brine_nif:to_binary(Owner, Ref, H)).
+
+-spec binary_to_keypair(keypair_blob()) -> {ok, #brine_keypair{}} | {error, term()}.
+binary_to_keypair(Blob = <<_:848>>) ->
+    Owner = self(),
+    Ref = erlang:make_ref(),
+    ?complete_nif_call(Ref, brine_nif:to_keypair(Owner, Ref, Blob)).

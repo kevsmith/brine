@@ -25,7 +25,9 @@
 -export([init/0,
          generate_keypair/2,
          sign_message/4,
-         verify_signature/5]).
+         verify_signature/5,
+         to_binary/3,
+         to_keypair/3]).
 
 -define(nif_error, erlang:nif_error(not_loaded)).
 
@@ -45,6 +47,12 @@ sign_message(_Caller, _Ref, _KeyPair, _Message) ->
     ?nif_error.
 
 verify_signature(_Caller, _Ref, _PubKey, _Signature, _Message) ->
+    ?nif_error.
+
+to_binary(_Caller, _Ref, _KeyPair) ->
+    ?nif_error.
+
+to_keypair(_Caller, _Ref, _Blob) ->
     ?nif_error.
 
 %% Internal functions
