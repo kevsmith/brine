@@ -1,12 +1,12 @@
-deps: ed25519 blake2 apply-patches
+deps: ed25519/src blake2/sse apply-patches
 
-ed25519:
-	git submodule init
-	git submodule update
+ed25519/src:
+	cd .. && git submodule init
+	cd .. && git submodule update
 
-blake2:
-	git submodule init
-	git submodule update
+blake2/src:
+	cd .. && git submodule init
+	cd .. && git submodule update
 
 apply-patches: patches/ed25519-seed.c.patch.applied patches/ed25519-sha512.c.patch.applied
 
