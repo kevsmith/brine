@@ -34,7 +34,6 @@ struct brine_queue_s {
   size_t start;
   size_t end;
   size_t size;
-  size_t waiting;
   bool shutdown;
   void **data;
   ErlNifCond *cond;
@@ -68,7 +67,6 @@ brine_queue_s* brine_queue_new(size_t initial_capacity, size_t growth_increment)
   retval->start = 0;
   retval->end = 0;
   retval->size = 0;
-  retval->waiting = 0;
   retval->capacity = initial_capacity;
   retval->shutdown = false;
   return retval;
@@ -92,23 +90,8 @@ ERROR:
 
 void brine_queue_destroy(brine_queue_s **ref) {
   brine_queue_s *queue = *ref;
-  struct timespec req, rem;
-  // 5 ms
-  req.tv_nsec = 5000000;
-  if (!queue) {
-    return;
-  }
-  enif_mutex_lock(queue->lock);
-  queue->shutdown = true;
-  enif_cond_broadcast(queue->cond);
-  while(queue->waiting > 0) {
-    enif_mutex_unlock(queue->lock);
-    nanosleep(&req, &rem);
-    enif_mutex_lock(queue->lock);
-  }
   enif_free(queue->data);
   enif_cond_destroy(queue->cond);
-  enif_mutex_unlock(queue->lock);
   enif_mutex_destroy(queue->lock);
   enif_free(queue);
   *ref = NULL;
@@ -122,16 +105,9 @@ void* brine_queue_dequeue(brine_queue_s *queue){
   }
   enif_mutex_lock(queue->lock);
   if (queue->size == 0) {
-    queue->waiting++;
     while(queue->size == 0) {
-      if (queue->shutdown) {
-        queue->waiting--;
-        enif_mutex_unlock(queue->lock);
-        return NULL;
-      }
       enif_cond_wait(queue->cond, queue->lock);
     }
-    queue->waiting--;
   }
   retval = BQ_BOTTOM(queue);
   BQ_BOTTOM(queue) = NULL;
@@ -171,7 +147,6 @@ brine_queue_errors brine_queue_enqueue(brine_queue_s *queue, void* entry) {
 }
 
 brine_queue_errors grow_queue(brine_queue_s *queue) {
-  printf("G\n");
   size_t index = 0;
   size_t count = 0;
   size_t capacity = queue->capacity + (queue_entry_size * queue->growth_increment);

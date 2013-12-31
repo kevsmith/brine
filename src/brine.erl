@@ -24,6 +24,7 @@
 -type public_key()  :: <<_:256>>.
 -type private_key() :: <<_:512>>.
 -type keypair_blob() :: <<_:848>>.
+-type signature() :: <<_:512>>.
 
 -export_type([handle/0,
               public_key/0,
@@ -58,7 +59,7 @@ new_keypair() ->
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:generate_keypair(Owner, Ref)).
 
--spec sign_message(#brine_keypair{}, binary()) -> {ok, binary()} | {error, term()}.
+-spec sign_message(#brine_keypair{}, binary()) -> {ok, signature()} | {error, term()}.
 sign_message(#brine_keypair{handle=H}, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
