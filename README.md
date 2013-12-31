@@ -20,7 +20,9 @@ Note: 1 roundtrip converts a key pair to a binary blob and back to an Erlang rec
 ```
 
 Test server: Intel Core i7-4770 (Haswell, hyperthreading enabled) @ 3.4 GHz CPU w/32 GB DDR3 RAM
+
 Test environment: Ubuntu 13.10, gcc 4.8.1, Erlang R16B03
+
 Special tuning: rngd and timer_entropyd used to increase available entropy
 
 Thanks to the following folks for making brine possible:
