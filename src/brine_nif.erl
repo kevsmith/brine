@@ -32,8 +32,7 @@
 -define(nif_error, erlang:nif_error(not_loaded)).
 
 init() ->
-    %Workers = erlang:max(1, erlang:round(erlang:system_info(logical_processors_available) * 0.5)),
-    Workers = erlang:system_info(logical_processors_available),
+    Workers = erlang:max(1, erlang:round(erlang:system_info(logical_processors_available) * 0.5)),
     case build_nif_path() of
         {ok, Path} ->
             erlang:load_nif(Path, Workers);
