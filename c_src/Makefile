@@ -1,14 +1,9 @@
-deps: ed25519/src blake2/sse apply-patches
+LIBBRINE_URL = git://github.com/foghaus/libbrine.git
 
-ed25519/src:
-	cd .. && git submodule init
-	cd .. && git submodule update
+deps: libbrine/libbrine_s.a
 
-blake2/src:
-	cd .. && git submodule init
-	cd .. && git submodule update
+libbrine/libbrine_s.a: libbrine
+	make -C libbrine -f Makefile.embed libbrine_s.a
 
-apply-patches: patches/ed25519-seed.c.patch.applied patches/ed25519-sha512.c.patch.applied
-
-%.applied:
-	patch -p0 < $* && touch $@
+libbrine:
+	git clone $(LIBBRINE_URL)
