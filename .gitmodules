@@ -1,6 +1,0 @@
-[submodule "c_src/ed25519"]
-	path = c_src/ed25519
-	url = git://github.com/nightcracker/ed25519
-[submodule "c_src/blake2"]
-	path = c_src/blake2
-	url = git://github.com/BLAKE2/BLAKE2

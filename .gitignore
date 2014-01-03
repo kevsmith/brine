@@ -1,8 +1,4 @@
 priv/*
 ebin/*
 c_src/*.o
-c_src/ed25519/src/*.o
-c_src/ed25519/src/sha512.c
-c_src/ed25519/src/seed.c
-c_src/blake2/sse/*.o
-c_src/patches/*.applied
+c_src/libbrine/**
