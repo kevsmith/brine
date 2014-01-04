@@ -25,16 +25,20 @@
 -type private_key() :: <<_:512>>.
 -type keypair_blob() :: <<_:848>>.
 -type signature() :: <<_:512>>.
+-type hex_signature() :: <<_:1024>>.
 
 -export_type([handle/0,
               public_key/0,
               private_key/0,
-              keypair_blob/0]).
+              keypair_blob/0,
+              signature/0,
+              hex_signature/0]).
 
 -include_lib("brine/include/brine.hrl").
 
 -export([new_keypair/0,
          sign_message/2,
+         sign_message_hex/2,
          verify_signature/3,
          keypair_to_binary/1,
          binary_to_keypair/1]).
@@ -64,6 +68,17 @@ sign_message(#brine_keypair{handle=H}, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)).
+
+-spec sign_message_hex(#brine_keypair{}, binary()) -> {ok, hex_signature()} | {error, term()}.
+sign_message_hex(#brine_keypair{handle=H}, Message) ->
+    Owner = self(),
+    Ref = erlang:make_ref(),
+    case ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)) of
+        {ok, Sig} ->
+            {ok, brine_format:binary_to_hex(Sig)};
+        Err ->
+            Err
+    end.
 
 -spec verify_signature(binary(), binary(), binary()) -> boolean() | {error, term()}.
 verify_signature(PubKey, Signature, Message) ->
