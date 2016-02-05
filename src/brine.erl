@@ -37,6 +37,7 @@
 -include_lib("brine/include/brine.hrl").
 
 -export([new_keypair/0,
+         new_keypair/1,
          sign_message/2,
          sign_message_hex/2,
          verify_signature/3,
@@ -62,6 +63,12 @@ new_keypair() ->
     Owner = self(),
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:generate_keypair(Owner, Ref)).
+
+-spec new_keypair(binary()) -> {ok, #brine_keypair{}} | {error, term()}.
+new_keypair(Seed) ->
+    Owner = self(),
+    Ref = erlang:make_ref(),
+    ?complete_nif_call(Ref, brine_nif:generate_keypair_from_seed(Owner, Ref, Seed)).
 
 -spec sign_message(#brine_keypair{}, binary()) -> {ok, signature()} | {error, term()}.
 sign_message(#brine_keypair{handle=H}, Message) ->
