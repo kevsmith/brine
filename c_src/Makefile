@@ -1,4 +1,4 @@
-LIBBRINE_URL = git://github.com/foghaus/libbrine.git
+LIBBRINE_URL = git://github.com/rlipscombe/libbrine.git
 
 deps: libbrine/libbrine_s.a
 
