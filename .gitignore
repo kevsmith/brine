@@ -1,4 +1,6 @@
 priv/*
 ebin/*
 c_src/*.o
+c_src/*.d
 c_src/libbrine/**
+.rebar/

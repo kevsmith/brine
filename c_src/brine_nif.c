@@ -143,7 +143,7 @@ static void keypair_to_binary(brine_task_s *task) {
 
 static void binary_to_keypair(brine_task_s *task) {
   ErlNifEnv *env = task->env;
-  brine_keypair_s *keypair;
+  brine_keypair_s *keypair = NULL;
   ErlNifBinary blob;
   ERL_NIF_TERM result;
 
