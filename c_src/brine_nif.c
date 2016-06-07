@@ -53,6 +53,7 @@ static ERL_NIF_TERM BRINE_ERROR_NO_MEMORY;
 
 // NIF function forward declares
 NIF(bnif_generate_keypair);
+NIF(bnif_generate_keypair_from_seed);
 NIF(bnif_sign_message);
 NIF(bnif_verify_signature);
 NIF(bnif_to_binary);
@@ -61,6 +62,7 @@ NIF(bnif_to_keypair);
 static ErlNifFunc nif_funcs[] =
 {
   {"generate_keypair", 2, bnif_generate_keypair},
+  {"generate_keypair_from_seed", 3, bnif_generate_keypair_from_seed},
   {"sign_message", 4, bnif_sign_message},
   {"verify_signature", 5, bnif_verify_signature},
   {"to_binary", 3, bnif_to_binary},
@@ -94,6 +96,32 @@ static void generate_keypair(brine_task_s *task) {
     }
     else {
       result = enif_make_tuple2(env, enif_make_copy(env, BRINE_ATOM_OK), make_keypair_record(env, keypair));
+    }
+    enif_release_resource(keypair);
+  }
+  enif_send(NULL, &task->owner, task->env, enif_make_tuple2(env, task->ref, result));
+}
+
+static void generate_keypair_from_seed(brine_task_s *task) {
+  ErlNifEnv *env = task->env;
+  ERL_NIF_TERM result;
+  brine_keypair_s *keypair = (brine_keypair_s *) enif_alloc_resource(brine_keypair_resource, sizeof(brine_keypair_s));
+  ErlNifBinary seed;
+
+  if (!keypair) {
+    result = BRINE_ERROR_NO_MEMORY;
+  }
+  else {
+    if (!enif_inspect_binary(env, task->options.generate.seed, &seed)) {
+      result = BRINE_ATOM_ERROR;
+    }
+    else {
+      if (!brine_init_keypair_from_seed(keypair, seed.data, seed.size)) {
+        result = BRINE_ATOM_ERROR;
+      }
+      else {
+        result = enif_make_tuple2(env, enif_make_copy(env, BRINE_ATOM_OK), make_keypair_record(env, keypair));
+      }
     }
     enif_release_resource(keypair);
   }
@@ -143,7 +171,7 @@ static void keypair_to_binary(brine_task_s *task) {
 
 static void binary_to_keypair(brine_task_s *task) {
   ErlNifEnv *env = task->env;
-  brine_keypair_s *keypair;
+  brine_keypair_s *keypair = NULL;
   ErlNifBinary blob;
   ERL_NIF_TERM result;
 
@@ -202,6 +230,9 @@ static void *worker_loop(void *ignored) {
     case BRINE_NEW_KEYPAIR:
       generate_keypair(task);
       break;
+    case BRINE_NEW_KEYPAIR_FROM_SEED:
+      generate_keypair_from_seed(task);
+      break;
     case BRINE_SIGN_MSG:
       sign_message(task);
       break;
@@ -243,6 +274,25 @@ NIF(bnif_generate_keypair) {
 
   brine_task_s *task = brine_task_new(&owner, BRINE_NEW_KEYPAIR, argv[1]);
   if (task) {
+    if (brine_queue_enqueue(queue, task) != BQ_SUCCESS) {
+      return make_error_tuple(env, enif_make_atom(env, "overload"));
+    }
+    return BRINE_ATOM_OK;
+  }
+  return BRINE_ATOM_ERROR;
+}
+
+NIF(bnif_generate_keypair_from_seed) {
+  ErlNifPid owner;
+
+  if (!enif_get_local_pid(env, argv[0], &owner) ||
+      !enif_is_ref(env, argv[1])) {
+    return enif_make_badarg(env);
+  }
+
+  brine_task_s *task = brine_task_new(&owner, BRINE_NEW_KEYPAIR_FROM_SEED, argv[1]);
+  if (task) {
+    task->options.generate.seed = enif_make_copy(task->env, argv[2]);
     if (brine_queue_enqueue(queue, task) != BQ_SUCCESS) {
       return make_error_tuple(env, enif_make_atom(env, "overload"));
     }

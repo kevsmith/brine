@@ -24,6 +24,7 @@
 
 -export([init/0,
          generate_keypair/2,
+         generate_keypair_from_seed/3,
          sign_message/4,
          verify_signature/5,
          to_binary/3,
@@ -41,6 +42,9 @@ init() ->
     end.
 
 generate_keypair(_Caller, _Ref) ->
+    ?nif_error.
+
+generate_keypair_from_seed(_Caller, _Ref, _Seed) ->
     ?nif_error.
 
 sign_message(_Caller, _Ref, _KeyPair, _Message) ->
