@@ -1,4 +1,4 @@
 priv/*
 ebin/*
-c_src/*.o
-c_src/libbrine/**
+*.o
+*.a

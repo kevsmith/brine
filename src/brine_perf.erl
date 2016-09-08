@@ -80,9 +80,9 @@ keygen(Owner, X) ->
     keygen(Owner, X - 1).
 
 signature(Owner, X) ->
-    random:seed(erlang:now()),
+    rand:seed(erlang:timestamp()),
     {ok, KeyPair} = brine:new_keypair(),
-    Msg = list_to_binary([random:uniform(255) || _ <- lists:seq(1, ?MSG_SIZE)]),
+    Msg = list_to_binary([rand:uniform(255) || _ <- lists:seq(1, ?MSG_SIZE)]),
     signature(Owner, Msg, KeyPair, X).
 
 signature(Owner, _Msg, _KeyPair, 0) ->

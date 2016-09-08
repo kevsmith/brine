@@ -32,10 +32,9 @@
 -define(nif_error, erlang:nif_error(not_loaded)).
 
 init() ->
-    Workers = erlang:max(1, erlang:round(erlang:system_info(logical_processors_available) * 0.5)),
     case build_nif_path() of
         {ok, Path} ->
-            erlang:load_nif(Path, Workers);
+            erlang:load_nif(Path, 1);
         Error ->
             Error
     end.
@@ -63,9 +62,7 @@ build_nif_path() ->
         {error, bad_name} ->
             case code:which(?MODULE) of
                 Filename when is_list(Filename) ->
-                    {ok, filename:join([filename:dirname(Filename),
-                                        "..","priv",
-                                        "brine_nif"])};
+                    {ok, filename:join([filename:dirname(Filename), "..","priv", "brine_nif"])};
                 Reason when is_atom(Reason) ->
                     {error, Reason}
             end
