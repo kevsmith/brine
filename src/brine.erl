@@ -57,7 +57,7 @@
                                              Error
                                      end).
 
--spec new_keypair() -> #{} | {error, term()}.
+-spec new_keypair() -> map() | {error, term()}.
 new_keypair() ->
     Owner = self(),
     Ref = erlang:make_ref(),
@@ -67,7 +67,7 @@ new_keypair() ->
         E -> E
     end.
 
--spec sign_message(#{}, binary()) -> signature() | {error, term()}.
+-spec sign_message(map(), binary()) -> signature() | {error, term()}.
 sign_message(#{handle := H}, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
@@ -76,7 +76,7 @@ sign_message(#{handle := H}, Message) ->
         E -> E
     end.
 
--spec sign_message_hex(#{}, binary()) -> hex_signature() | {error, term()}.
+-spec sign_message_hex(map(), binary()) -> hex_signature() | {error, term()}.
 sign_message_hex(#{handle := H}, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
@@ -93,7 +93,7 @@ verify_signature(PubKey, Signature, Message) ->
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:verify_signature(Owner, Ref, PubKey, Signature, Message)).
 
--spec keypair_to_binary(#{}) -> keypair_blob() | {error, term()}.
+-spec keypair_to_binary(map()) -> keypair_blob() | {error, term()}.
 keypair_to_binary(#{handle := H}) ->
     Owner = self(),
     Ref = erlang:make_ref(),
@@ -102,7 +102,7 @@ keypair_to_binary(#{handle := H}) ->
         E -> E
     end.
 
--spec binary_to_keypair(keypair_blob()) -> #{} | {error, term()}.
+-spec binary_to_keypair(keypair_blob()) -> map() | {error, term()}.
 binary_to_keypair(Blob = <<_:848>>) ->
     Owner = self(),
     Ref = erlang:make_ref(),
