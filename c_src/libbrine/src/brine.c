@@ -47,6 +47,14 @@ bool brine_init_keypair(brine_keypair_s *keypair) {
   return true;
 }
 
+bool brine_init_keypair_from_seed(brine_keypair_s *keypair, const unsigned char *seed, size_t seedlen) {
+  if (seedlen != BRINE_SEED_SZ) {
+    return false;
+  }
+  ed25519_create_keypair(keypair->public_key, keypair->private_key, seed);
+  return true;
+}
+
 brine_keypair_s *brine_new_keypair() {
   brine_keypair_s *retval = (brine_keypair_s *) brine_alloc(sizeof(brine_keypair_s));
   if (retval) {

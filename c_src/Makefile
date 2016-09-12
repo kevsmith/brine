@@ -73,6 +73,7 @@ $(C_SRC_OUTPUT): libbrine/libbrine_s.a $(OBJECTS)
 
 clean:
 	@rm -f $(C_SRC_OUTPUT) $(OBJECTS)
+	make -C libbrine -f Makefile.embed clean
 
 libbrine/libbrine_s.a:
 	make -C libbrine -f Makefile.embed libbrine_s.a

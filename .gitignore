@@ -3,3 +3,5 @@ priv/*
 ebin/*
 *.o
 *.a
+*.d
+.rebar/

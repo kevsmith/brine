@@ -30,6 +30,7 @@ void brine_init(brine_memory_cb_s *cb);
 
 brine_keypair_s *brine_new_keypair();
 bool brine_init_keypair(brine_keypair_s *keypair);
+bool brine_init_keypair_from_seed(brine_keypair_s *keypair, const unsigned char *seed, size_t seedlen);
 void brine_sign_message(const brine_keypair_s *keypair, const unsigned char *message, size_t msglen, unsigned char *buf);
 bool brine_verify_signature(const unsigned char *key, const unsigned char *message, size_t msglen, unsigned char *signature);
 
