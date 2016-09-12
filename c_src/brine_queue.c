@@ -149,8 +149,8 @@ brine_queue_errors brine_queue_enqueue(brine_queue_s *queue, void* entry) {
 brine_queue_errors grow_queue(brine_queue_s *queue) {
   size_t index = 0;
   size_t count = 0;
-  size_t capacity = queue->capacity + (queue_entry_size * queue->growth_increment);
-  void ** data = enif_alloc(capacity);
+  size_t new_capacity = queue->capacity + queue->growth_increment;
+  void ** data = enif_alloc(new_capacity * queue_entry_size);
   if(data == NULL) {
     return BQ_NO_MEMORY;
   }
@@ -161,7 +161,7 @@ brine_queue_errors grow_queue(brine_queue_s *queue) {
   //delete old queue and fix meta data.
   enif_free(queue->data);
   queue->data = data;
-  queue->capacity *= 2;
+  queue->capacity = new_capacity;
   queue->start = 0;
   queue->end = queue->size; 
 
