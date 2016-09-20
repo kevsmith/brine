@@ -22,6 +22,14 @@ sign_test() ->
 verify_test() ->
     KeyPair = brine:new_keypair(),
     KeyPair1 = brine:new_keypair(),
-    Sig1 = brine:sign_message(KeyPair, ?MESSAGE),
-    ?assert(brine:verify_signature(maps:get(public,KeyPair), Sig1, ?MESSAGE)),
-    ?assertNot(brine:verify_signature(maps:get(public,KeyPair1), Sig1, ?MESSAGE)).
+    Sig = brine:sign_message(KeyPair, ?MESSAGE),
+    ?assert(brine:verify_signature(maps:get(public,KeyPair), Sig, ?MESSAGE)),
+    ?assertNot(brine:verify_signature(maps:get(public,KeyPair1), Sig, ?MESSAGE)).
+
+verify_without_handle_test() ->
+    #{public := Pub, secret := Sec} = brine:new_keypair(),
+    KeyPair = #{public => Pub, secret => Sec},
+    #{public := Pub1} = brine:new_keypair(),
+    Sig = brine:sign_message(KeyPair, ?MESSAGE),
+    ?assert(brine:verify_signature(maps:get(public,KeyPair), Sig, ?MESSAGE)),
+    ?assertNot(brine:verify_signature(Pub1, Sig, ?MESSAGE)).

@@ -42,7 +42,8 @@
          sign_message_hex/2,
          verify_signature/3,
          keypair_to_binary/1,
-         binary_to_keypair/1]).
+         binary_to_keypair/1,
+         keys_to_keypair/2]).
 
 %% Needs to be a macro so the stacktrace for the badarg error
 %% is correct.
@@ -85,7 +86,10 @@ sign_message(#{handle := H}, Message) ->
     case ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)) of
         {ok, Sig} -> Sig;
         E -> E
-    end.
+    end;
+sign_message(#{public := P, secret := S}, Message) ->
+    KeyPair = keys_to_keypair(P, S),
+    sign_message(KeyPair, Message).
 
 -spec sign_message_hex(map(), binary()) -> hex_signature() | {error, term()}.
 sign_message_hex(#{handle := H}, Message) ->
@@ -96,7 +100,10 @@ sign_message_hex(#{handle := H}, Message) ->
             brine_format:binary_to_hex(Sig);
         E ->
             E
-    end.
+    end;
+sign_message_hex(#{public := P, secret := S}, Message) ->
+    KeyPair = keys_to_keypair(P, S),
+    sign_message_hex(KeyPair, Message).
 
 -spec verify_signature(binary(), binary(), binary()) -> boolean() | {error, term()}.
 verify_signature(PubKey, Signature, Message) ->
@@ -111,13 +118,24 @@ keypair_to_binary(#{handle := H}) ->
     case ?complete_nif_call(Ref, brine_nif:to_binary(Owner, Ref, H)) of
         {ok, Bin} -> Bin;
         E -> E
-    end.
+    end;
+keypair_to_binary(#{public := P, secret := S}) ->
+    KeyPair = keys_to_keypair(P, S),
+    keypair_to_binary(KeyPair).
 
 -spec binary_to_keypair(keypair_blob()) -> map() | {error, term()}.
 binary_to_keypair(Blob = <<_:848>>) ->
     Owner = self(),
     Ref = erlang:make_ref(),
     case ?complete_nif_call(Ref, brine_nif:to_keypair(Owner, Ref, Blob)) of
+        {ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
+            #{handle => H, public => P, secret => S};
+        E -> E
+    end.
+
+-spec keys_to_keypair(public_key(), private_key()) -> map() | {error, term()}.
+keys_to_keypair(Public = <<_:256>>, Secret = <<_:512>>) ->
+    case brine_nif:to_keypair_from_keys(Public, Secret) of
         {ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
             #{handle => H, public => P, secret => S};
         E -> E

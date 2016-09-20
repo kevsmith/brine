@@ -58,6 +58,7 @@ NIF(bnif_sign_message);
 NIF(bnif_verify_signature);
 NIF(bnif_to_binary);
 NIF(bnif_to_keypair);
+NIF(bnif_to_keypair_from_keys);
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -66,7 +67,8 @@ static ErlNifFunc nif_funcs[] =
   {"sign_message", 4, bnif_sign_message},
   {"verify_signature", 5, bnif_verify_signature},
   {"to_binary", 3, bnif_to_binary},
-  {"to_keypair", 3, bnif_to_keypair}
+  {"to_keypair", 3, bnif_to_keypair},
+  {"to_keypair_from_keys", 2, bnif_to_keypair_from_keys}
 };
 
 static ERL_NIF_TERM make_error_tuple(ErlNifEnv *env, ERL_NIF_TERM reason) {
@@ -386,6 +388,31 @@ NIF(bnif_to_keypair) {
     return BRINE_ATOM_OK;
   }
   return BRINE_ERROR_NO_MEMORY;
+}
+
+NIF(bnif_to_keypair_from_keys) {
+  ErlNifBinary pubkey;
+  ErlNifBinary privkey;
+  brine_keypair_s *keys = NULL;
+
+  if (!enif_is_binary(env, argv[0]) || !enif_is_binary(env, argv[1])) {
+    return enif_make_badarg(env);
+  }
+  if (!enif_inspect_binary(env, argv[0], &pubkey) ||
+      !enif_inspect_binary(env, argv[1], &privkey) ||
+      ((keys = (brine_keypair_s *) enif_alloc_resource(brine_keypair_resource, sizeof(brine_keypair_s))) == NULL)) {
+    if (keys) {
+      enif_release_resource((void *) keys);
+    }
+    return BRINE_ERROR_NO_MEMORY;
+  }
+  if (pubkey.size != BRINE_PUBKEY_SZ || privkey.size != BRINE_PRIVKEY_SZ) {
+    return enif_make_badarg(env);
+  }
+  memcpy(&keys->public_key[0], &pubkey.data[0], BRINE_PUBKEY_SZ);
+  memcpy(&keys->private_key[0], &privkey.data[0], BRINE_PRIVKEY_SZ);
+  enif_keep_resource((void *) keys);
+  return enif_make_tuple2(env, BRINE_ATOM_OK, make_keypair_record(env, keys));
 }
 
 /**

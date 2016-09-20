@@ -28,7 +28,8 @@
          sign_message/4,
          verify_signature/5,
          to_binary/3,
-         to_keypair/3]).
+         to_keypair/3,
+         to_keypair_from_keys/2]).
 
 -define(nif_error, erlang:nif_error(not_loaded)).
 
@@ -56,6 +57,9 @@ to_binary(_Caller, _Ref, _KeyPair) ->
     ?nif_error.
 
 to_keypair(_Caller, _Ref, _Blob) ->
+    ?nif_error.
+
+to_keypair_from_keys(_Public, _Secret) ->
     ?nif_error.
 
 %% Internal functions
