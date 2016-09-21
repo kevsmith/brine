@@ -3,8 +3,8 @@
 #ifndef ED25519_NO_SEED
 
 #ifdef _WIN32
-#include <Windows.h>
-#include <Wincrypt.h>
+#include <windows.h>
+#include <wincrypt.h>
 #else
 #include <stdio.h>
 #endif
@@ -29,12 +29,11 @@ int ed25519_create_seed(unsigned char *seed) {
     if (f == NULL) {
         return 1;
     }
-    int items_read = fread(seed, 1, 32, f);
+
+    fread(seed, 1, 32, f);
     fclose(f);
-    if (items_read != 32) {
-      return 1;
-    }
 #endif
+
     return 0;
 }
 
