@@ -1,0 +1,27 @@
+SRC := $(wildcard src/*.c) $(wildcard src/ed25519/*.c) src/blake2/blake2b.c
+OBJ := $(SRC:.c=.o)
+TESTS := keypair_test serialize_test
+
+SHARED_CFLAGS = -std=gnu99 -fPIC -O3 -march=opteron -Iinclude
+LIB_CFLAGS := $(SHARED_CFLAGS) -Isrc/ed25519 -Isrc/blake2 -Wall -Werror
+TEST_CFLAGS := $(SHARED_CFLAGS) -Itests -Wno-unused-but-set-variable -Wno-unused-variable
+
+all: libbrine_s.a libbrine.so
+
+clean:
+	rm -f $(OBJ) libbrine_s.a libbrine.so $(TESTS)
+
+test: $(TESTS)
+	./keypair_test && ./serialize_test
+
+libbrine_s.a: $(OBJ)
+	$(AR) qcs $@ $(OBJ)
+
+libbrine.so: $(OBJ)
+	$(CC) -shared -o $@ $(OBJ)
+
+%_test: $(OBJ)
+	$(CC) $(TEST_CFLAGS) -o $@  tests/$*.c $(OBJ)
+
+%.o: %.c
+	$(CC) $(LIB_CFLAGS) -c -o $@ $<

@@ -24,23 +24,27 @@
 
 -export([init/0,
          generate_keypair/2,
+         generate_keypair_from_seed/3,
          sign_message/4,
          verify_signature/5,
          to_binary/3,
-         to_keypair/3]).
+         to_keypair/3,
+         to_keypair_from_keys/2]).
 
 -define(nif_error, erlang:nif_error(not_loaded)).
 
 init() ->
-    Workers = erlang:max(1, erlang:round(erlang:system_info(logical_processors_available) * 0.5)),
     case build_nif_path() of
         {ok, Path} ->
-            erlang:load_nif(Path, Workers);
+            erlang:load_nif(Path, 1);
         Error ->
             Error
     end.
 
 generate_keypair(_Caller, _Ref) ->
+    ?nif_error.
+
+generate_keypair_from_seed(_Caller, _Ref, _Seed) ->
     ?nif_error.
 
 sign_message(_Caller, _Ref, _KeyPair, _Message) ->
@@ -55,6 +59,9 @@ to_binary(_Caller, _Ref, _KeyPair) ->
 to_keypair(_Caller, _Ref, _Blob) ->
     ?nif_error.
 
+to_keypair_from_keys(_Public, _Secret) ->
+    ?nif_error.
+
 %% Internal functions
 build_nif_path() ->
     case code:priv_dir(brine) of
@@ -63,9 +70,7 @@ build_nif_path() ->
         {error, bad_name} ->
             case code:which(?MODULE) of
                 Filename when is_list(Filename) ->
-                    {ok, filename:join([filename:dirname(Filename),
-                                        "..","priv",
-                                        "brine_nif"])};
+                    {ok, filename:join([filename:dirname(Filename), "..","priv", "brine_nif"])};
                 Reason when is_atom(Reason) ->
                     {error, Reason}
             end

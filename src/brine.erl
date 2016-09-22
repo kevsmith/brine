@@ -37,11 +37,13 @@
 -include_lib("brine/include/brine.hrl").
 
 -export([new_keypair/0,
+         new_keypair/1,
          sign_message/2,
          sign_message_hex/2,
          verify_signature/3,
          keypair_to_binary/1,
-         binary_to_keypair/1]).
+         binary_to_keypair/1,
+         keys_to_keypair/2]).
 
 %% Needs to be a macro so the stacktrace for the badarg error
 %% is correct.
@@ -57,28 +59,51 @@
                                              Error
                                      end).
 
--spec new_keypair() -> {ok, #brine_keypair{}} | {error, term()}.
+-spec new_keypair() -> map() | {error, term()}.
 new_keypair() ->
     Owner = self(),
     Ref = erlang:make_ref(),
-    ?complete_nif_call(Ref, brine_nif:generate_keypair(Owner, Ref)).
+    case ?complete_nif_call(Ref, brine_nif:generate_keypair(Owner, Ref)) of
+        {ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
+            #{handle => H, public => P, secret => S};
+        E -> E
+    end.
 
--spec sign_message(#brine_keypair{}, binary()) -> {ok, signature()} | {error, term()}.
-sign_message(#brine_keypair{handle=H}, Message) ->
+-spec new_keypair(binary()) -> map() | {error, term()}.
+new_keypair(Seed) ->
     Owner = self(),
     Ref = erlang:make_ref(),
-    ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)).
+    case ?complete_nif_call(Ref, brine_nif:generate_keypair_from_seed(Owner, Ref, Seed)) of
+	{ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
+	    #{handle => H, public => P, secret => S};
+        E -> E
+    end.
 
--spec sign_message_hex(#brine_keypair{}, binary()) -> {ok, hex_signature()} | {error, term()}.
-sign_message_hex(#brine_keypair{handle=H}, Message) ->
+-spec sign_message(map(), binary()) -> signature() | {error, term()}.
+sign_message(#{handle := H}, Message) ->
+    Owner = self(),
+    Ref = erlang:make_ref(),
+    case ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)) of
+        {ok, Sig} -> Sig;
+        E -> E
+    end;
+sign_message(#{public := P, secret := S}, Message) ->
+    KeyPair = keys_to_keypair(P, S),
+    sign_message(KeyPair, Message).
+
+-spec sign_message_hex(map(), binary()) -> hex_signature() | {error, term()}.
+sign_message_hex(#{handle := H}, Message) ->
     Owner = self(),
     Ref = erlang:make_ref(),
     case ?complete_nif_call(Ref, brine_nif:sign_message(Owner, Ref, H, Message)) of
         {ok, Sig} ->
-            {ok, brine_format:binary_to_hex(Sig)};
-        Err ->
-            Err
-    end.
+            brine_format:binary_to_hex(Sig);
+        E ->
+            E
+    end;
+sign_message_hex(#{public := P, secret := S}, Message) ->
+    KeyPair = keys_to_keypair(P, S),
+    sign_message_hex(KeyPair, Message).
 
 -spec verify_signature(binary(), binary(), binary()) -> boolean() | {error, term()}.
 verify_signature(PubKey, Signature, Message) ->
@@ -86,14 +111,32 @@ verify_signature(PubKey, Signature, Message) ->
     Ref = erlang:make_ref(),
     ?complete_nif_call(Ref, brine_nif:verify_signature(Owner, Ref, PubKey, Signature, Message)).
 
--spec keypair_to_binary(#brine_keypair{}) -> {ok, keypair_blob()} | {error, term()}.
-keypair_to_binary(#brine_keypair{handle=H}) ->
+-spec keypair_to_binary(map()) -> keypair_blob() | {error, term()}.
+keypair_to_binary(#{handle := H}) ->
     Owner = self(),
     Ref = erlang:make_ref(),
-    ?complete_nif_call(Ref, brine_nif:to_binary(Owner, Ref, H)).
+    case ?complete_nif_call(Ref, brine_nif:to_binary(Owner, Ref, H)) of
+        {ok, Bin} -> Bin;
+        E -> E
+    end;
+keypair_to_binary(#{public := P, secret := S}) ->
+    KeyPair = keys_to_keypair(P, S),
+    keypair_to_binary(KeyPair).
 
--spec binary_to_keypair(keypair_blob()) -> {ok, #brine_keypair{}} | {error, term()}.
+-spec binary_to_keypair(keypair_blob()) -> map() | {error, term()}.
 binary_to_keypair(Blob = <<_:848>>) ->
     Owner = self(),
     Ref = erlang:make_ref(),
-    ?complete_nif_call(Ref, brine_nif:to_keypair(Owner, Ref, Blob)).
+    case ?complete_nif_call(Ref, brine_nif:to_keypair(Owner, Ref, Blob)) of
+        {ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
+            #{handle => H, public => P, secret => S};
+        E -> E
+    end.
+
+-spec keys_to_keypair(public_key(), private_key()) -> map() | {error, term()}.
+keys_to_keypair(Public = <<_:256>>, Secret = <<_:512>>) ->
+    case brine_nif:to_keypair_from_keys(Public, Secret) of
+        {ok, #brine_keypair{handle=H, private_key=S, public_key=P}} ->
+            #{handle => H, public => P, secret => S};
+        E -> E
+    end.

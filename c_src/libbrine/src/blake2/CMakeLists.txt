@@ -1,0 +1,1 @@
+add_library(blake2 OBJECT [blake2b.c])

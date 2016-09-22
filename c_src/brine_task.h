@@ -32,11 +32,16 @@
 typedef enum brine_cmd_e {
   BRINE_STOP,
   BRINE_NEW_KEYPAIR,
+  BRINE_NEW_KEYPAIR_FROM_SEED,
   BRINE_SIGN_MSG,
   BRINE_VERIFY,
   BRINE_TO_BINARY,
   BRINE_TO_KEYPAIR
 } brine_task_cmd_e;
+
+typedef struct {
+    ERL_NIF_TERM seed;
+} brine_generate_s;
 
 typedef struct {
   brine_keypair_s *keys;
@@ -55,6 +60,7 @@ typedef struct {
   brine_task_cmd_e cmd;
   ERL_NIF_TERM ref;
   union {
+    brine_generate_s generate;
     brine_task_sig_s signature;
     brine_task_verify_s verify;
   } options;

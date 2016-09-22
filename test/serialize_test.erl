@@ -4,7 +4,12 @@
 -include_lib("eunit/include/eunit.hrl").
 
 blob_test() ->
-    {ok, KeyPair} = brine:new_keypair(),
-    {ok, Blob} = brine:keypair_to_binary(KeyPair),
-    {ok, KeyPair1} = brine:binary_to_keypair(Blob),
-    ?assertMatch(KeyPair, KeyPair1).
+    KeyPair = brine:new_keypair(),
+    Secret = maps:get(secret, KeyPair),
+    Public = maps:get(public, KeyPair),
+    Blob = brine:keypair_to_binary(KeyPair),
+    KeyPair1 = brine:binary_to_keypair(Blob),
+    Secret1 = maps:get(secret, KeyPair1),
+    Public1 = maps:get(public, KeyPair1),
+    ?assertMatch(Secret, Secret1),
+    ?assertMatch(Public, Public1).

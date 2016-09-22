@@ -5,7 +5,10 @@
          serialize/0,
          all/0]).
 
--define(ITER, 1000000).
+%% -define(ITER, 1000000).
+-define(ITER1, 2000).
+-define(ITER2, 40000).
+-define(ITER3, 20000).
 -define(CHILDREN, 4).
 -define(MSG_SIZE, 4096).
 
@@ -15,7 +18,7 @@ all() ->
     serialize().
 
 keygen() ->
-    ChildIter = erlang:round(?ITER / ?CHILDREN),
+    ChildIter = erlang:round(?ITER1 / ?CHILDREN),
     Start = os:timestamp(),
     start_children(fun keygen/2, ChildIter, ?CHILDREN),
     join_children(?CHILDREN),
@@ -28,7 +31,7 @@ keygen() ->
     io:format("Keys per sec: ~p~n", [erlang:round((ChildIter * ?CHILDREN) / Secs)]).
 
 signature() ->
-    ChildIter = erlang:round(?ITER / ?CHILDREN),
+    ChildIter = erlang:round(?ITER2 / ?CHILDREN),
     Start = os:timestamp(),
     start_children(fun signature/2, ChildIter, ?CHILDREN),
     join_children(?CHILDREN),
@@ -42,7 +45,7 @@ signature() ->
     io:format("Signatures per sec: ~p~n", [erlang:round((ChildIter * ?CHILDREN) / Secs)]).
 
 serialize() ->
-    ChildIter = erlang:round(?ITER / ?CHILDREN),
+    ChildIter = erlang:round(?ITER3 / ?CHILDREN),
     Start = os:timestamp(),
     start_children(fun serialize/2, ChildIter, ?CHILDREN),
     join_children(?CHILDREN),
@@ -76,30 +79,30 @@ keygen(Owner, 0) ->
     Owner ! done,
     ok;
 keygen(Owner, X) ->
-    {ok, _} = brine:new_keypair(),
+    _ = brine:new_keypair(),
     keygen(Owner, X - 1).
 
 signature(Owner, X) ->
-    random:seed(erlang:now()),
-    {ok, KeyPair} = brine:new_keypair(),
-    Msg = list_to_binary([random:uniform(255) || _ <- lists:seq(1, ?MSG_SIZE)]),
+    rand:seed(exs1024, erlang:timestamp()),
+    KeyPair = brine:new_keypair(),
+    Msg = list_to_binary([rand:uniform(255) || _ <- lists:seq(1, ?MSG_SIZE)]),
     signature(Owner, Msg, KeyPair, X).
 
 signature(Owner, _Msg, _KeyPair, 0) ->
     Owner ! done,
     ok;
 signature(Owner, Msg, KeyPair, X) ->
-    {ok, _} = brine:sign_message(KeyPair, Msg),
+    _ = brine:sign_message(KeyPair, Msg),
     signature(Owner, Msg, KeyPair, X - 1).
 
 serialize(Owner, X) ->
-    {ok, KeyPair} = brine:new_keypair(),
+    KeyPair = brine:new_keypair(),
     serialize(Owner, KeyPair, X).
 
 serialize(Owner, _KeyPair, 0) ->
     Owner ! done,
     ok;
 serialize(Owner, KeyPair, X) ->
-    {ok, Blob} = brine:keypair_to_binary(KeyPair),
-    {ok, KeyPair} = brine:binary_to_keypair(Blob),
+    Blob = brine:keypair_to_binary(KeyPair),
+    KeyPair = brine:binary_to_keypair(Blob),
     serialize(Owner, KeyPair, X - 1).
